@@ -1,12 +1,18 @@
 """内存数据仓库：给每个业务模块准备一份可筛选、可流转的示例数据。
 
 真实项目里这里会换成数据库访问层；当前实现只依赖标准库，保证克隆下来就能起。
+以下划线开头的表是血缘对照票、版本快照等内部关联表，不参与运营概览统计。
 """
 from __future__ import annotations
 
 from typing import Any
 
 from app.seed import SEED_ROWS
+
+
+def is_internal(name: str) -> bool:
+    """内部关联表以 _ 开头：供业务服务联查，不单独作为业务模块展示。"""
+    return name.startswith("_")
 
 
 class Store:
@@ -16,7 +22,10 @@ class Store:
         }
 
     def module_names(self) -> list[str]:
-        return sorted(self._tables)
+        return sorted(name for name in self._tables if not is_internal(name))
+
+    def internal_names(self) -> list[str]:
+        return sorted(name for name in self._tables if is_internal(name))
 
     def rows(self, module: str) -> list[dict[str, Any]]:
         return self._tables.setdefault(module, [])
@@ -26,6 +35,15 @@ class Store:
             if int(row.get("id", 0)) == entry_id:
                 return row
         return None
+
+    def find_by(self, module: str, field: str, value: Any) -> dict[str, Any] | None:
+        for row in self.rows(module):
+            if row.get(field) == value:
+                return row
+        return None
+
+    def next_id(self, module: str) -> int:
+        return max((int(row.get("id", 0)) for row in self.rows(module)), default=0) + 1
 
     def overview(self) -> dict[str, object]:
         modules: list[dict[str, object]] = []

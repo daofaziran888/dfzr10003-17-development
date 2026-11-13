@@ -28,7 +28,16 @@ class LineageService:
             rows = [row for row in rows if row.get("status") == status]
         total = len(rows)
         start = max(page - 1, 0) * size
-        return rows[start:start + size], total
+        items = []
+        for row in rows[start:start + size]:
+            # 待评审候选版本只作为提示展示，不写入图谱版本，避免候选版本提前生效。
+            pending = [
+                version.get("版本号")
+                for version in store.rows("_lineage_versions")
+                if version.get("节点编号") == row.get("节点编号") and version.get("状态") == "待评审"
+            ]
+            items.append({**row, "候选版本": "、".join(sorted(pending, key=str)) or "—"})
+        return items, total
 
     def get_entry(self, entry_id: int) -> dict[str, Any] | None:
         return store.find(MODULE, entry_id)
@@ -52,6 +61,18 @@ class LineageService:
             return None, f"血缘节点 {entry_id} 不存在或已归档"
         if action not in ACTION_RULES:
             return None, f"动作「{action}」不属于血缘图谱可执行范围"
+        if action == "发布节点":
+            # 有候选版本待评审时，发布必须走对照票确认：一次确认同时更新节点与元数据待办。
+            pending = [
+                version.get("版本号")
+                for version in store.rows("_lineage_versions")
+                if version.get("节点编号") == entry.get("节点编号") and version.get("状态") == "待评审"
+            ]
+            if pending:
+                return None, (
+                    f"节点还有待评审候选版本 {'、'.join(map(str, pending))}，"
+                    "候选版本不能提前生效，请先在字段影响对照票上完成评审确认"
+                )
         target = ACTION_RULES[action]
         if target not in STATUS_ORDER:
             return None, f"目标状态「{target}」不在允许的状态序列里"

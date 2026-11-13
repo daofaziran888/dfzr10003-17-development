@@ -33,3 +33,25 @@ body { margin: 0; background: #f6f8fb; color: #1f2937; }
 .link { border: none; background: none; color: var(--brand); cursor: pointer; padding: 0; }
 .page-foot { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .error-text { color: #b42318; }
+
+/* 血缘字段影响对照票 */
+.ticket-panel { margin-top: 20px; padding: 14px 16px; background: #fff; border: 1px solid var(--border); border-radius: 8px; }
+.section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.section-head h3 { margin: 0; font-size: 15px; }
+.section-card { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; }
+.ticket-generate { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.ticket-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.ticket-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.hint-text { color: var(--muted); font-size: 12px; }
+.ok-text { color: #067647; font-size: 12px; }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 11px; border: 1px solid var(--border); background: #f1f5f9; color: #334155; }
+.tag.ok { background: #ecfdf3; border-color: #abefc6; color: #067647; }
+.tag.warn { background: #fffaeb; border-color: #fedf89; color: #b54708; }
+.tag.danger { background: #fef3f2; border-color: #fecdca; color: #b42318; }
+.tag.conflict { margin-left: 4px; }
+.chip { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 6px; border-radius: 4px; font-size: 11px; background: #eff6ff; color: #1e40af; }
+.chip.warn { background: #fffaeb; color: #b54708; }
+.mono { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 12px; }
+.data-table.compact th, .data-table.compact td { padding: 5px 8px; }
+.row-active td { background: #eff6ff; }
+select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }

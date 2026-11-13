@@ -30,6 +30,13 @@ def list_entries(
     return PageResult(items=items, total=total, page=page, size=size)
 
 
+@router.get("/versions")
+def available_versions(node_no: str | None = Query(default=None, description="按血缘节点编号过滤")) -> dict[str, Any]:
+    """新补数可选的已确认血缘版本；待评审候选版本不会出现在这里。"""
+    versions = service.available_versions(node_no)
+    return {"items": versions, "total": len(versions)}
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条重跑批次明细；不存在时给出可读的错误说明。"""
@@ -41,10 +48,16 @@ def get_entry(entry_id: int) -> dict:
 
 @router.post("", response_model=ActionResult)
 def create_entry(payload: EntryPayload) -> ActionResult:
-    """登记一条重跑批次，缺字段时说明原因而不是静默丢弃。"""
+    """登记一条重跑批次；新补数只能绑定已评审确认的血缘版本。"""
     entry, missing = service.create_entry(payload.values)
     if missing:
         return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
+    if entry is None:
+        binding = str(payload.values.get("绑定版本号") or "").strip()
+        return ActionResult(
+            ok=False,
+            message=f"血缘版本 {binding or '未绑定'} 尚未评审确认，新补数只能选择已确认版本",
+        )
     return ActionResult(ok=True, message="重跑批次已登记", entry=entry)
 
 

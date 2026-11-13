@@ -30,6 +30,41 @@ def list_entries(
     return PageResult(items=items, total=total, page=page, size=size)
 
 
+@router.get("/todos", response_model=PageResult[dict])
+def list_todos(
+    keyword: str | None = Query(default=None, description="按字段名称或记录编号检索"),
+    status: str | None = Query(default=None, description="待确认、已确认、已忽略"),
+    ticket_no: str | None = Query(default=None, description="按来源对照票过滤"),
+    node_no: str | None = Query(default=None, description="按引用血缘节点过滤"),
+    page: int = 1,
+    size: int = 20,
+) -> PageResult[dict]:
+    """元数据待办：列出对照票确认后生成的待确认事项，每条都引用血缘节点版本。"""
+    if size > 200:
+        raise HTTPException(status_code=400, detail="每页最多 200 条，请缩小分页范围")
+    items, total = service.list_todos(
+        keyword=keyword, status=status, ticket_no=ticket_no, node_no=node_no, page=page, size=size,
+    )
+    return PageResult(items=items, total=total, page=page, size=size)
+
+
+@router.post("/todos/{todo_id}/actions", response_model=ActionResult)
+def run_todo_action(todo_id: int, payload: EntryPayload) -> ActionResult:
+    """确认或忽略一条元数据待办事项。"""
+    action = str(payload.values.get("action") or "").strip()
+    todo, message = service.run_todo_action(todo_id, action)
+    if todo is None:
+        return ActionResult(ok=False, message=message)
+    return ActionResult(ok=True, message=message, entry=todo)
+
+
+@router.get("/export")
+def export_entries() -> dict[str, Any]:
+    """导出元数据目录清单：返回当前过滤条件下的全量数据。"""
+    items, total = service.list_entries(page=1, size=10000)
+    return {"module": "metadata", "total": total, "items": items}
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条元数据记录明细；不存在时给出可读的错误说明。"""
@@ -56,10 +91,3 @@ def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
-
-
-@router.get("/export")
-def export_entries() -> dict[str, Any]:
-    """导出元数据目录清单：返回当前过滤条件下的全量数据。"""
-    items, total = service.list_entries(page=1, size=10000)
-    return {"module": "metadata", "total": total, "items": items}

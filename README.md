@@ -11,12 +11,14 @@
 .
 ├── frontend/                 React + Vite + TypeScript 前端
 │   ├── src/views/            每个业务模块一个页面
+│   ├── src/components/       跨模块复用组件（如对照票摘要）
 │   ├── src/api/              统一请求封装
 │   ├── src/stores/           会话与筛选状态
 │   └── vite.config.ts        dev server 配置（open: false）
 ├── backend/                  FastAPI（Python） 后端
 │   ├── app/routers/          每个业务模块一组接口
 │   ├── app/services/         业务规则与状态流转
+│   ├── tests/                行为自检脚本（无需 pytest）
 │   └── app/store.py          内存数据仓库与示例数据
 ├── .gitignore
 └── docker-compose.yml
@@ -72,6 +74,32 @@ npm run dev
   `backend/app/routers/<模块>.py`，业务规则在 `backend/app/services/<模块>.py`。
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
+- 行为自检：`cd backend && .venv/bin/python -I tests/lineage_ticket_check.py`。
+
+## 血缘字段影响对照票
+
+血缘节点（示例节点 `LINEAGE-0003`）的候选字段映射不再直接改正式图谱，而是先出一张**只读**对照票，
+评审确认后才更新血缘版本。相关接口都在 `/api/lineage` 下：
+
+| 接口 | 说明 |
+| --- | --- |
+| `POST /api/lineage/{id}/tickets` | 按候选版本 + 字段映射生成对照票；同一节点同一候选版本重复调用返回同一张票 |
+| `GET /api/lineage/tickets` | 对照票列表 |
+| `GET /api/lineage/tickets/{票号}` | 对照票完整内容 |
+| `GET /api/lineage/tickets/{票号}/items` | 按字段名检索、按变化类型筛选并排序差异项 |
+| `GET /api/lineage/tickets/{票号}/summary` | 三个入口共用的摘要（字段名、旧值、新值、确认状态） |
+| `POST /api/lineage/tickets/{票号}/confirm` | 评审确认：版本落库、旧版本归档、受影响元数据写成待确认事项 |
+
+规则要点：
+
+- 差异项按「新增 / 移除 / 语义变化」逐字段列出，每项带受影响元数据记录、下游节点和仍在用旧映射的补数批次。
+- 冲突字段按节点版本与生效时间裁决；确认时重新裁决，裁决给其他版本的字段会拦住当前版本落库。
+- 并发确认同一张票只有一个版本落库（服务层串行化，非首次确认直接返回已确认票）。
+- 历史补数继续绑定旧票；`GET /api/backfill/versions` 只返回已确认版本，新补数登记时后端再校验一次。
+- 元数据待办：`GET /api/metadata/todos`、`POST /api/metadata/todos/{id}/actions`（确认事项 / 忽略事项）。
+
+三个入口（血缘节点列表、元数据待办、历史补数）都用 `frontend/src/components/TicketSummary.tsx`
+展示同一张对照票的字段名、旧值、新值与确认状态。
 
 领域：数据工程
 子方向：数仓与数据湖
